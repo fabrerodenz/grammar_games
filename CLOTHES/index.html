@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Little Shopper's Mini Market!</title>
+    <style>
+        :root {
+            --primary: #FFB7B2;
+            --secondary: #B2E2F2;
+            --accent: #B2F2BB;
+            --shadow: 0 8px 0 rgba(0,0,0,0.15);
+            --gloss: inset 0 4px 0 rgba(255,255,255,0.4);
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; }
+
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            font-family: 'Fredoka', sans-serif, 'Arial Rounded MT Bold';
+            overflow: hidden;
+        }
+
+        .page {
+            position: absolute; inset: 0;
+            display: none; flex-direction: column;
+            align-items: center; justify-content: center;
+            background-size: cover; background-position: center;
+        }
+        .active { display: flex; }
+
+        #page1 { background-image: url('home_page.png'); justify-content: center; padding-bottom: 100px; }
+        #page2 { background-image: url('game.png'); }
+        #page3 { background-image: url('game_one.png'); }
+        #page4 { background-image: url('game_two.png'); }
+        #page5 { background-image: url('shopping_page.png'); }
+
+        #global-ui {
+            position: fixed; top: 20px; left: 20px; right: 20px;
+            display: flex; justify-content: space-between; z-index: 1000;
+            align-items: center;
+        }
+
+        .header-right { display: flex; align-items: center; gap: 15px; }
+
+        /* 1. Money Display (Hidden by default) */
+        #money-display {
+            font-size: 32px; color: #555; font-weight: bold;
+            background: white; padding: 10px 25px; border-radius: 40px;
+            box-shadow: var(--shadow), var(--gloss);
+            border: 3px solid var(--accent);
+            min-width: 180px; text-align: center;
+            display: none; 
+        }
+
+        .btn {
+            border: none; border-radius: 40px;
+            padding: 15px 40px; font-size: 28px; font-weight: bold;
+            cursor: pointer; background: white; color: #555;
+            transition: all 0.2s ease; box-shadow: var(--shadow), var(--gloss);
+            text-transform: uppercase; min-width: 220px; text-align: center;
+        }
+        .btn:active { transform: scale(0.95); box-shadow: 0 2px 0 rgba(0,0,0,0.15); }
+        .btn-pink { background: var(--primary); color: white; }
+        .btn-blue { background: var(--secondary); color: white; }
+        .btn-green { background: var(--accent); color: white; }
+        
+        .icon-btn { min-width: 70px; width: 70px; height: 70px; padding: 0; border-radius: 50%; font-size: 35px; }
+
+        .btn-large { padding: 60px 80px; font-size: 45px; min-width: 400px; border-radius: 60px; }
+
+        /* Game 1 Balloon */
+        #balloon-container { position: relative; width: 100%; height: 75vh; overflow: hidden; }
+        .balloon {
+            position: absolute; bottom: -160px; width: 140px; height: 140px;
+            background: white; border-radius: 50%; display: flex; align-items: center;
+            justify-content: center; box-shadow: 0 10px 20px rgba(0,0,0,0.1); cursor: pointer; 
+            animation: floatUp 7s linear forwards;
+        }
+        .balloon img { width: 90px; height: 90px; object-fit: contain; pointer-events: none; }
+        
+        @keyframes floatUp {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-130vh); }
+        }
+
+        /* Shopping Grid */
+        .grid {
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 15px; width: 85%; padding: 20px;
+            background: rgba(255,255,255,0.3); border-radius: 40px; backdrop-filter: blur(5px);
+        }
+        .item-card {
+            background: white; border-radius: 30px; padding: 10px;
+            display: flex; flex-direction: column; align-items: center;
+            box-shadow: var(--shadow); position: relative; text-align: center;
+        }
+        .item-card img { width: 100%; height: 80px; object-fit: contain; }
+        .locked img { filter: grayscale(1) opacity(0.4); }
+        .card-label { font-size: 18px; font-weight: bold; margin-top: 5px; color: #444; text-transform: uppercase; }
+
+        .sidebar { position: fixed; right: 20px; bottom: 50px; display: flex; flex-direction: column; gap: 15px; }
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); display: none; justify-content: center; align-items: center; z-index: 2000; }
+        
+        .modal { background: white; padding: 40px; border-radius: 50px; text-align: center; width: 550px; max-width: 95vw; }
+        .modal-large { padding: 60px; width: 750px; }
+        
+        /* Input Display */
+        .spelling-display {
+            font-size: 40px; font-weight: bold; color: var(--secondary);
+            background: #f0f0f0; padding: 15px; border-radius: 20px;
+            margin: 20px 0; min-height: 70px; border: 4px solid var(--secondary);
+            letter-spacing: 5px; text-transform: uppercase;
+        }
+
+        /* 3. On-Screen Keyboard Styles */
+        .keyboard {
+            display: grid; grid-template-columns: repeat(10, 1fr);
+            gap: 8px; margin-top: 20px; background: #eee; padding: 15px; border-radius: 20px;
+        }
+        .key {
+            background: white; border: none; border-radius: 10px;
+            padding: 15px 5px; font-size: 20px; font-weight: bold;
+            box-shadow: 0 4px 0 #ccc; cursor: pointer;
+        }
+        .key:active { transform: translateY(2px); box-shadow: 0 2px 0 #ccc; }
+        .key-del { grid-column: span 2; background: #FFB7B2; color: white; }
+    </style>
+</head>
+<body>
+
+    <div id="global-ui">
+        <button class="btn icon-btn btn-pink" onclick="goHome()">🏠</button>
+        <div class="header-right">
+            <div id="money-display">NTD <span id="money-val">0</span></div>
+            <button class="btn icon-btn btn-blue" id="mute-btn" onclick="toggleAudio()">🔊</button>
+            <button class="btn icon-btn btn-green" onclick="toggleFullscreen()">⛶</button>
+        </div>
+    </div>
+
+    <div id="page1" class="page active">
+        <div style="display: flex; gap: 20px;">
+            <button class="btn btn-green" onclick="showPage('page2')">START</button>
+            <button class="btn btn-blue" onclick="toggleOverlay('instruction-overlay', true)">HELP</button>
+        </div>
+    </div>
+
+    <div id="page2" class="page">
+        <div style="display: flex; gap: 40px;">
+            <button class="btn btn-pink btn-large" onclick="showPage('page3')">PLAY GAME</button>
+            <button class="btn btn-green btn-large" onclick="showPage('page4')">SHOPPING</button>
+        </div>
+    </div>
+
+    <div id="page3" class="page">
+        <div style="background: white; padding: 10px 40px; border-radius: 50px; box-shadow: var(--shadow); margin-top: 10px;">
+            <h1 id="target-word" style="font-size: 50px; margin: 0; color: var(--primary);">READY</h1>
+        </div>
+        <div id="balloon-container"></div>
+        <button class="btn btn-green" style="margin-bottom: 20px;" onclick="showPage('page4')">GO SHOPPING</button>
+    </div>
+
+    <div id="page4" class="page">
+        <div style="background: white; padding: 10px 30px; border-radius: 30px; margin-bottom: 15px; font-size: 24px; font-weight: bold;">
+            Items in Cart: <span id="cart-count">0</span> / 5
+        </div>
+        <div class="grid" id="shop-grid"></div>
+        <div class="sidebar">
+            <button class="btn btn-blue" style="min-width: 180px;" onclick="showPage('page3')">Earn Money</button>
+            <button class="btn btn-pink" style="min-width: 180px;" onclick="resetCart()">Reset</button>
+            <button class="btn btn-green" style="min-width: 180px;" onclick="finishShopping()">Pay Now</button>
+        </div>
+    </div>
+
+    <div id="page5" class="page">
+        <div class="modal">
+            <h1>SHOPPING RECEIPT</h1>
+            <div id="summary-items" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; margin: 20px;"></div>
+            <div style="font-size: 24px; line-height: 1.6; color: #444;">
+                <p>Total Spent: NTD <span id="final-spent">0</span></p>
+                <p>Change Left: NTD <span id="final-change">0</span></p>
+            </div>
+            <button class="btn btn-green" onclick="goHome()">PLAY AGAIN</button>
+        </div>
+    </div>
+
+    <div id="spelling-overlay" class="overlay">
+        <div class="modal">
+            <img id="spell-img" src="" style="width: 120px;">
+            <div id="spell-text-display" class="spelling-display"></div>
+            
+            <div class="modal-buttons">
+                <button class="btn btn-green" style="min-width: 140px;" onclick="checkSpelling()">CHECK</button>
+                <button class="btn btn-pink" style="min-width: 140px;" onclick="toggleOverlay('spelling-overlay', false)">CANCEL</button>
+            </div>
+
+            <div class="keyboard" id="kb-container">
+                </div>
+        </div>
+    </div>
+
+    <div id="instruction-overlay" class="overlay">
+        <div class="modal modal-large">
+            <h2>How to play</h2>
+            <p>1. Catch the correct balloons to earn money.<br><br>2. Type the name to buy clothes.<br><br>3. Buy at least 5 things to finish!</p>
+            <button class="btn btn-blue" style="font-size: 35px; padding: 20px 60px;" onclick="toggleOverlay('instruction-overlay', false)">I'M READY!</button>
+        </div>
+    </div>
+
+    <script>
+        const items = [
+            { id: 'dress', price: 700, img: 'dress.png' },
+            { id: 'coat', price: 1000, img: 'coat.png' },
+            { id: 'hat', price: 300, img: 'hat.png' },
+            { id: 'cap', price: 300, img: 'cap.png' },
+            { id: 'jacket', price: 800, img: 'jacket_1.png' },
+            { id: 'jacket', price: 800, img: 'jacket_2.png' },
+            { id: 'skirt', price: 500, img: 'skirt.png' },
+            { id: 't-shirt', price: 400, img: 't-shirt_1.png' },
+            { id: 't-shirt', price: 400, img: 't-shirt_2.png' },
+            { id: 'shirt', price: 500, img: 'shirt.png' },
+            { id: 'jeans', price: 700, img: 'jeans_1.png' },
+            { id: 'jeans', price: 700, img: 'jeans_2.png' },
+            { id: 'pants', price: 800, img: 'pants.png' },
+            { id: 'shorts', price: 400, img: 'shorts_1.png' },
+            { id: 'shorts', price: 400, img: 'shorts_2.png' },
+            { id: 'shoes', price: 1000, img: 'shoes_1.png' },
+            { id: 'shoes', price: 1000, img: 'shoes_2.png' },
+            { id: 'socks', price: 200, img: 'socks.png' },
+            { id: 'slippers', price: 1000, img: 'slippers.png' }
+        ];
+
+        let state = { money: 0, unlocked: [], cart: [], isMuted: false, currentTarget: null, currentInput: "" };
+        let balloonInterval;
+
+        function speak(text) {
+            if (state.isMuted) return;
+            window.speechSynthesis.cancel();
+            const m = new SpeechSynthesisUtterance(text);
+            m.lang = 'en-US'; m.rate = 0.5;
+            window.speechSynthesis.speak(m);
+        }
+
+        // 1. Logic to show/hide money display based on page
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            
+            const moneyDisplay = document.getElementById('money-display');
+            if (id === 'page3' || id === 'page4') {
+                moneyDisplay.style.display = 'block';
+            } else {
+                moneyDisplay.style.display = 'none';
+            }
+
+            clearInterval(balloonInterval);
+            if(id === 'page3') initBalloonGame();
+            if(id === 'page4') initShop();
+        }
+
+        function goHome() { location.reload(); }
+        function toggleOverlay(id, show) { document.getElementById(id).style.display = show ? 'flex' : 'none'; }
+
+        // Game 1
+        function initBalloonGame() {
+            const container = document.getElementById('balloon-container');
+            container.innerHTML = '';
+            pickNewTarget();
+            balloonInterval = setInterval(() => createBalloon(), 900);
+        }
+
+        function pickNewTarget() {
+            state.currentTarget = items[Math.floor(Math.random() * items.length)];
+            document.getElementById('target-word').innerText = state.currentTarget.id.toUpperCase();
+            speak(state.currentTarget.id);
+        }
+
+        function createBalloon() {
+            const container = document.getElementById('balloon-container');
+            const spawnCorrect = Math.random() < 0.4;
+            const item = spawnCorrect ? state.currentTarget : items[Math.floor(Math.random() * items.length)];
+            const b = document.createElement('div');
+            b.className = 'balloon';
+            b.style.left = Math.random() * 80 + 10 + '%';
+            b.innerHTML = `<img src="${item.img}">`;
+            b.onclick = () => {
+                if(item.id === state.currentTarget.id) {
+                    state.money += 200;
+                    speak("Great"); // Correct feedback word kept here as per game logic
+                    b.remove();
+                    updateStats();
+                    pickNewTarget();
+                } else {
+                    state.money -= 100;
+                    speak("Oops!");
+                    b.remove();
+                    updateStats();
+                }
+            };
+            container.appendChild(b);
+            setTimeout(() => { if(b.parentNode) b.remove(); }, 7000);
+        }
+
+        // Game 2
+        function initShop() {
+            const grid = document.getElementById('shop-grid');
+            grid.innerHTML = '';
+            items.forEach((item, index) => {
+                const isBought = state.cart.includes(index);
+                const isUnlocked = state.unlocked.includes(index);
+                const card = document.createElement('div');
+                card.className = `item-card ${isUnlocked ? '' : 'locked'}`;
+                if(isBought) card.style.background = '#B2F2BB';
+                let content = `<img src="${item.img}">`;
+                if(isUnlocked) content += `<div class="card-label">${item.id}</div>`;
+                content += `<p>NTD ${item.price}</p>`;
+                card.innerHTML = content;
+                card.onclick = () => handleShopClick(item, index);
+                grid.appendChild(card);
+            });
+            updateStats();
+        }
+
+        let currentSpellIndex = null;
+        function handleShopClick(item, index) {
+            if (state.cart.includes(index)) return;
+            if (!state.unlocked.includes(index)) {
+                currentSpellIndex = index;
+                state.currentInput = ""; // Reset input
+                document.getElementById('spell-text-display').innerText = "";
+                document.getElementById('spell-img').src = item.img;
+                toggleOverlay('spelling-overlay', true);
+                speak(`${item.id}`); // 2. "Correct" word removed from start
+                renderKeyboard();
+            } else {
+                if(state.money >= item.price) {
+                    state.money -= item.price;
+                    state.cart.push(index);
+                    speak("Bought");
+                    initShop();
+                } else { speak("Need more money"); }
+            }
+        }
+
+        // 3. Custom Keyboard Logic
+        function renderKeyboard() {
+            const container = document.getElementById('kb-container');
+            container.innerHTML = "";
+            const letters = "QWERTYUIOPASDFGHJKLZXCVBNM-".split("");
+            letters.forEach(l => {
+                const k = document.createElement('button');
+                k.className = 'key';
+                k.innerText = l;
+                k.onclick = () => {
+                    state.currentInput += l.toLowerCase();
+                    document.getElementById('spell-text-display').innerText = state.currentInput;
+                };
+                container.appendChild(k);
+            });
+            const del = document.createElement('button');
+            del.className = 'key key-del';
+            del.innerText = "DEL";
+            del.onclick = () => {
+                state.currentInput = state.currentInput.slice(0, -1);
+                document.getElementById('spell-text-display').innerText = state.currentInput;
+            };
+            container.appendChild(del);
+        }
+
+        function checkSpelling() {
+            const target = items[currentSpellIndex].id.toLowerCase();
+            if(state.currentInput === target) {
+                state.unlocked.push(currentSpellIndex);
+                toggleOverlay('spelling-overlay', false);
+                // 2. Audio "Great" word used as feedback instead of start
+                speak("Great!"); 
+                initShop();
+            } else { 
+                speak("Try again"); 
+                state.currentInput = "";
+                document.getElementById('spell-text-display').innerText = "";
+            }
+        }
+
+        function updateStats() {
+            document.getElementById('money-val').innerText = state.money;
+            document.getElementById('cart-count').innerText = state.cart.length;
+        }
+
+        function resetCart() { state.cart = []; initShop(); }
+
+        function finishShopping() {
+            if(state.cart.length < 5) { speak("Buy 5 items"); return; }
+            showPage('page5');
+            const container = document.getElementById('summary-items');
+            container.innerHTML = '';
+            let total = 0;
+            state.cart.forEach(idx => {
+                total += items[idx].price;
+                container.innerHTML += `<div class="item-card"><img src="${items[idx].img}"><div class="card-label">${items[idx].id}</div></div>`;
+            });
+            document.getElementById('final-spent').innerText = total;
+            document.getElementById('final-change').innerText = state.money;
+            speak("Finished!");
+        }
+
+        function toggleAudio() {
+            state.isMuted = !state.isMuted;
+            document.getElementById('mute-btn').innerText = state.isMuted ? "🔇" : "🔊";
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+            else document.exitFullscreen();
+        }
+    </script>
+</body>
+</html>
